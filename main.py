@@ -1,6 +1,9 @@
 from pajek_reader import read_pajek_file
 import snap
 
+import pprint
+pp = pprint.PrettyPrinter(indent=2)
+
 # if __name__ == "__main__":
 
 input_file = 'Webs_paj/Chesapeake.paj'
@@ -52,7 +55,7 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
     for preyId in node.GetInEdges():
       if 'trophic_level' in nodeInfo[preyId]:
         preyLevel = nodeInfo[preyId]['trophic_level']
-        if preyLevel == 1:
+        if preyLevel in [1, 2]:
           nodeInfo[nodeId]['trophic_level'] = 2
           break
 
@@ -75,6 +78,8 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
   for nodeId in nodeInfo:
     if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
       continue
+    if 'trophic_level' in nodeInfo[nodeId]: # ignore organisms that have already been asigned a trophic level
+      continue
     isCarnivore = True
     node = G.GetNI(nodeId)
     for preyId in node.GetInEdges():
@@ -87,3 +92,5 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
       nodeInfo[nodeId]['trophic_level'] = 4
 
 analyzeTrophicLevels(G, nodeInfo, edgeWeights)
+
+pp.pprint(nodeInfo)

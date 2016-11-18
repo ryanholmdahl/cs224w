@@ -70,9 +70,9 @@ def processNetwork(all_lines, curr, nodeInfo, edgeWeights):
   curr+=1
 
   for curr in xrange(curr, curr+numNodes):
-    nodeLine = all_lines[curr].split()
+    nodeLine = all_lines[curr].split(' "')
     nodeId = int(nodeLine[0])
-    nodeName = nodeLine[1]
+    nodeName = nodeLine[1][0:-1] # ignore final double-quotation
 
     nodeInfo[nodeId]['name'] = nodeName
   curr+=1
