@@ -30,7 +30,8 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
   # mark all detritivores
   for nodeId in nodeInfo:
     if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
-      pass
+      continue
+    node = G.GetNI(nodeId)
     for preyId in node.GetInEdges():
       if nodeInfo[preyId]['type'] == 2:
         nodeInfo[nodeId]['trophic_level'] = 0
@@ -39,14 +40,15 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
   # mark all autotrophs (can overwrite detritivores)
   for nodeId in nodeInfo:
     if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
-      pass
+      continue
     if (inputId, nodeId) in edgeWeights:
       nodeInfo[nodeId]['trophic_level'] = 1
 
   # mark all primary consumers (can overwrite autotrophs)
   for nodeId in nodeInfo:
     if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
-      pass
+      continue
+    node = G.GetNI(nodeId)
     for preyId in node.GetInEdges():
       if 'trophic_level' in nodeInfo[preyId]:
         preyLevel = nodeInfo[preyId]['trophic_level']
@@ -58,9 +60,10 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
   # - all herbivores are primary consumers who also eat other primary consumers
   for nodeId in nodeInfo:
     if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
-      pass
-    if nodeInfo[nodeId]['trophic_level'] != 2: # ignore non-primary consumers
-      pass
+      continue
+    if 'trophic_level' not in nodeInfo[nodeId] or nodeInfo[nodeId]['trophic_level'] != 2: # ignore non-primary consumers
+      continue
+    node = G.GetNI(nodeId)
     for preyId in node.GetInEdges():
       if 'trophic_level' in nodeInfo[preyId]:
         preyLevel = nodeInfo[preyId]['trophic_level']
@@ -71,8 +74,9 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
   # mark all carnivores
   for nodeId in nodeInfo:
     if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
-      pass
+      continue
     isCarnivore = True
+    node = G.GetNI(nodeId)
     for preyId in node.GetInEdges():
       if 'trophic_level' in nodeInfo[preyId]:
         preyLevel = nodeInfo[preyId]['trophic_level']
