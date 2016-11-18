@@ -31,6 +31,7 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
   nodeInfo[inputId]['trophic_level'] = -1
 
   # mark all detritivores
+  # - take input from detritus
   for nodeId in nodeInfo:
     if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
       continue
@@ -41,6 +42,7 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
         break
 
   # mark all autotrophs (can overwrite detritivores)
+  # - take input from Sun
   for nodeId in nodeInfo:
     if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
       continue
@@ -48,6 +50,7 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
       nodeInfo[nodeId]['trophic_level'] = 1
 
   # mark all primary consumers (can overwrite autotrophs)
+  # - eat autotrophs or detritovores
   for nodeId in nodeInfo:
     if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
       continue
@@ -55,7 +58,7 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
     for preyId in node.GetInEdges():
       if 'trophic_level' in nodeInfo[preyId]:
         preyLevel = nodeInfo[preyId]['trophic_level']
-        if preyLevel in [1, 2]:
+        if preyLevel in [0, 1]:
           nodeInfo[nodeId]['trophic_level'] = 2
           break
 
@@ -75,6 +78,7 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
           break
 
   # mark all carnivores
+  # - eat only primary consumers and herbivores
   for nodeId in nodeInfo:
     if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
       continue
@@ -93,4 +97,21 @@ def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
 
 analyzeTrophicLevels(G, nodeInfo, edgeWeights)
 
-pp.pprint(nodeInfo)
+# pp.pprint(nodeInfo)
+
+def calculatePercentBiomass(nodeInfo):
+  biomass = [0] * 6
+  for nodeId, info in nodeInfo.items():
+    if info['type'] == 1: # living organism
+      trophic_level = info['trophic_level']
+      biomass[trophic_level] += info['biomass']
+    elif info['type'] == 2: # detritus
+      biomass[5] += info['biomass']
+  
+  # normalize
+  total = float(sum(biomass))
+  biomass = [x/total for x in biomass]
+
+  return biomass
+
+pp.pprint(calculatePercentBiomass(nodeInfo))
