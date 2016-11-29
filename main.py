@@ -6,7 +6,7 @@ pp = pprint.PrettyPrinter(indent=2)
 
 # if __name__ == "__main__":
 
-input_file = 'Webs_paj/Chesapeake.paj'
+input_file = 'Webs_paj/Florida.paj'
 nodeInfo, edgeWeights = read_pajek_file(input_file)
 
 G = snap.TNGraph.New() # directed graph
@@ -99,19 +99,5 @@ analyzeTrophicLevels(G, nodeInfo, edgeWeights)
 
 # pp.pprint(nodeInfo)
 
-def calculatePercentBiomass(nodeInfo):
-  biomass = [0] * 6
-  for nodeId, info in nodeInfo.items():
-    if info['type'] == 1: # living organism
-      trophic_level = info['trophic_level']
-      biomass[trophic_level] += info['biomass']
-    elif info['type'] == 2: # detritus
-      biomass[5] += info['biomass']
-  
-  # normalize
-  total = float(sum(biomass))
-  biomass = [x/total for x in biomass]
-
-  return biomass
-
-pp.pprint(calculatePercentBiomass(nodeInfo))
+#pp.pprint(nodeInfo)
+#pp.pprint(calculatePercentBiomass(nodeInfo))
