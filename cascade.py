@@ -349,16 +349,13 @@ class CascadeAlgorithm():
 
 
 class TurnAlgorithm():
-    def __init__(self, masses, edges, sources, sinks, piles, min_biomass, learn_rate, learn_thresh, given_eat_rates=None, train_iters=10):
+    def __init__(self, masses, edges, sources, sinks, piles, min_biomass):
         self.default_biomass = masses
         self.edges = edges
         self.sources = sources
         self.sinks = sinks
         self.piles = piles
         self.min_biomass = min_biomass
-        self.learn_rate = learn_rate
-        self.learn_thresh = learn_thresh
-        self.train_iters = train_iters
         self.nodelist = []
         for node1, node2 in self.edges:
             if node1 not in self.nodelist:
@@ -370,9 +367,21 @@ class TurnAlgorithm():
         sink_edges = {edge: self.edges[edge] for edge in self.edges if edge[1] in self.sinks}
         self.sink_edge_per_input = {edge: self.edges[edge] * 1.0 / sum(sink_edges.values()) for edge in sink_edges}
         self.edge_per_input = {edge: self.edges[edge]*1.0 / max(self.edges.values()) for edge in self.edges}
+        self.calc_eat_rates()
+
+    def reset(self):
+        self.biomass = copy.deepcopy(self.default_biomass)
+
+    def calc_eat_rates(self):
         self.eat_rates = {}
-        if given_eat_rates is not None:
-            self.eat_rates = copy.deepcopy(given_eat_rates)
+        for edge in self.edges:
+            if edge[1] in self.sinks or edge[1] in self.piles:
+                self.eat_rates[edge] = self.edge_per_input[edge]/self.biomass[edge[0]]
+            elif edge[0] in self.sources:
+                self.eat_rates[edge] = self.edge_per_input[edge]/self.biomass[edge[1]]
+            else:
+                self.eat_rates[edge] = self.edge_per_input[edge]/self.biomass[edge[1]]/self.biomass[edge[0]]
+
 
     def turn_eat_rates(self,verbose=False):
         for edge in self.edges:

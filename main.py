@@ -1,5 +1,7 @@
 from pajek_reader import read_pajek_file
+from cascade import TurnAlgorithm
 import snap
+import math
 
 import pprint
 pp = pprint.PrettyPrinter(indent=2)
@@ -14,6 +16,38 @@ for nodeId in nodeInfo:
   G.AddNode(nodeId)
 for edge in edgeWeights:
   G.AddEdge(edge[0], edge[1])
+
+def initialize_turn_algorithm(node_info, edge_weights, min_biomass):
+  masses = {}
+  sources = []
+  sinks = []
+  piles = []
+  for node_id in node_info:
+    masses[node_id] = node_info[node_id]['biomass']
+    if node_info[node_id]['type'] == 2:
+      piles.append(node_id)
+    elif node_info[node_id]['type'] == 3:
+      sources.append(node_id)
+    elif node_info[node_id]['type'] in [4,5]:
+      sinks.append(node_id)
+  algo = TurnAlgorithm(masses, edge_weights, sources, sinks, piles, min_biomass)
+  return algo
+
+def get_change_impact(algo, event_node, new_mass):
+  algo.reset()
+  mass_flow, average_masses = algo.turns(event_node, new_mass, iters=10000, verbose=True)
+  final_masses = {node:average_masses[node] if algo.biomass[node] > 0 else 0 for node in algo.nodelist if algo.default_biomass[node] > 0}
+  extinctions = 0
+  relative_sizes = {}
+  for node_id in final_masses:
+    if node_id == event_node:
+      continue
+    if final_masses[node_id] == 0:
+      extinctions += 1
+    relative_sizes[node_id] = final_masses[node_id]/algo.default_biomass[node_id]
+  impact_score = sum([math.pow(relative_sizes[node_id]-1,2) for node_id in relative_sizes]) + 0.5 * extinctions
+  return impact_score
+
 
 # snap.PrintInfo(G, "Python type PNGraph", "test.txt", False)
 

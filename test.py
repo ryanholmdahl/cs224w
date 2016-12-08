@@ -1,12 +1,12 @@
-masses = {0:0, 1:0, 2:200, 3:100, 4:100}
-edges = {(0,3):100, (3,1):50, (3,2):50, (2,4):100, (4,1):50, (4,2):50}
+from main import initialize_turn_algorithm, get_change_impact
+from cascade import TurnAlgorithm
+
+masses = {0: 0, 1: 0, 2: 300, 3: 1000, 4: 200, 5: 200, 6: 100}
+edges = {(0, 3): 1000, (3, 4): 600, (3, 1): 200, (3, 2): 200, (4, 6): 300, (4, 1): 150, (4, 2): 150,
+             (2, 5): 350,
+             (5, 6): 100, (5,1): 250, (6, 1): 400}
 sources = [0]
 sinks = [1]
 piles = [2]
-algo = TurnAlgorithm(masses, edges, sources, sinks, piles, 10, 1e-6, 1e-3)
-algo.turn_eat_rates(verbose=False)
-print algo.eat_rates
-print ""
-mass_flow, average_masses = algo.turns(2, 10, iters=10000, verbose=False)
-print average_masses
-print algo.biomass
+algo = TurnAlgorithm(masses, edges, sources, sinks, piles, 10)
+print get_change_impact(algo, 3, 000)
