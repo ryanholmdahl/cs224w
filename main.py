@@ -6,16 +6,69 @@ import math
 import pprint
 pp = pprint.PrettyPrinter(indent=2)
 
-# if __name__ == "__main__":
+### Parameters ###
+input_file_path = 'Webs_paj/Florida.paj'
+min_biomass = 0.1
+destruction_type = 'random'
+destruction_mass = 10
 
-input_file = 'Webs_paj/Florida.paj'
-nodeInfo, edgeWeights = read_pajek_file(input_file)
+### Global Vars ###
+node_info = None
+edge_weights = None
 
-G = snap.TNGraph.New() # directed graph
-for nodeId in nodeInfo:
-  G.AddNode(nodeId)
-for edge in edgeWeights:
-  G.AddEdge(edge[0], edge[1])
+def main():
+  G = setup_graph(input_file_path)
+  algo = initialize_turn_algorithm(node_info, edge_weights, min_biomass)
+
+  victim_node, destruction_score = wreck_havoc(algo, G, destruction_type)
+  analyze_graph(G)
+
+def wreck_havoc(algo, G, destruction_type):
+  victim_node = 0
+  if destruction_type == 'random':
+    victim_node = random.choose(node_info.keys())
+  elif destruction_type == 'highest_degree':
+    victim_node = snap.GetMxDegNId(G)
+  elif destruction_type == 'largest_biomass':
+    max_mass = 0
+    for node_id, node in node_info.iteritems():
+      if node['biomass'] > max_mass:
+        victim_node = node_id
+  
+  print 'Chose node %d (%s) as victim for destruction' % (victim_node, node_info[victim_node]['name'])
+  print 'Wrecking havoc...'
+  return victim_node, get_change_impact(algo, victim_node, destruction_mass)
+
+def analyze_graph(G):
+  # in-degree distribution
+  in_degree_distr = snap.TIntPrV() # [(degree, count)]
+  snap.GetInDegCnt(G, in_degree_distr)
+  
+  # out-degree distribution
+  out_degree_distr = snap.TIntPrV() # [(degree, count)]
+  snap.GetOutDegCnt(Graph, out_degree_distr)
+
+  # (exact) betweenness centrality for every node and edge
+  node_between_cent = snap.TIntFltH() # {node_id => betweenness centrality}
+  edge_between_cent = snap.TIntPrFltH() # {(n1,n2) => betweenness centrality}
+  snap.GetBetweennessCentr(G, node_between_cent, edge_between_cent, 1.0)
+
+  # PageRank score of every node
+  page_rank = snap.TIntFltH() # {node_id => PageRank score}
+  snap.GetPageRank(G, page_rank)
+
+  return in_degree_distr, out_degree_distr, node_between_cent, edge_between_cent, page_rank
+
+def setup_graph(input_file_path):
+  global node_info, edge_weights
+  print 'Reading in nodes and edges from %s' % (input_file_path, )
+  node_info, edge_weights = read_pajek_file(input_file_path)
+  G = snap.TNGraph.New() # directed graph
+  for nodeId in node_info:
+    G.AddNode(nodeId)
+  for edge in edge_weights:
+    G.AddEdge(edge[0], edge[1])
+  return G
 
 def initialize_turn_algorithm(node_info, edge_weights, min_biomass):
   masses = {}
@@ -48,90 +101,5 @@ def get_change_impact(algo, event_node, new_mass):
   impact_score = sum([math.pow(relative_sizes[node_id]-1,2) for node_id in relative_sizes]) + 0.5 * extinctions
   return impact_score
 
-
-# snap.PrintInfo(G, "Python type PNGraph", "test.txt", False)
-
-# adds 'trophic_level' key to each nodeInfo
-# -1: input
-# 0 : detritivores
-# 1 : autotrophs
-# 2 : primary consumers (herbivores)
-# 3 : secondary consumers (omnivores)
-# 4 : predators (carnivores)
-def analyzeTrophicLevels(G, nodeInfo, edgeWeights):
-  # get nodeId of input (Sun)
-  inputId = [nodeId for nodeId, info in nodeInfo.items() if info['type'] == 3]
-  inputId = inputId[0]
-  nodeInfo[inputId]['trophic_level'] = -1
-
-  # mark all detritivores
-  # - take input from detritus
-  for nodeId in nodeInfo:
-    if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
-      continue
-    node = G.GetNI(nodeId)
-    for preyId in node.GetInEdges():
-      if nodeInfo[preyId]['type'] == 2:
-        nodeInfo[nodeId]['trophic_level'] = 0
-        break
-
-  # mark all autotrophs (can overwrite detritivores)
-  # - take input from Sun
-  for nodeId in nodeInfo:
-    if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
-      continue
-    if (inputId, nodeId) in edgeWeights:
-      nodeInfo[nodeId]['trophic_level'] = 1
-
-  # mark all primary consumers (can overwrite autotrophs)
-  # - eat autotrophs or detritovores
-  for nodeId in nodeInfo:
-    if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
-      continue
-    node = G.GetNI(nodeId)
-    for preyId in node.GetInEdges():
-      if 'trophic_level' in nodeInfo[preyId]:
-        preyLevel = nodeInfo[preyId]['trophic_level']
-        if preyLevel in [0, 1]:
-          nodeInfo[nodeId]['trophic_level'] = 2
-          break
-
-  # mark all herbivores (can overwrite primary consumers)
-  # - all herbivores are primary consumers who also eat other primary consumers
-  for nodeId in nodeInfo:
-    if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
-      continue
-    if 'trophic_level' not in nodeInfo[nodeId] or nodeInfo[nodeId]['trophic_level'] != 2: # ignore non-primary consumers
-      continue
-    node = G.GetNI(nodeId)
-    for preyId in node.GetInEdges():
-      if 'trophic_level' in nodeInfo[preyId]:
-        preyLevel = nodeInfo[preyId]['trophic_level']
-        if preyLevel == 2:
-          nodeInfo[nodeId]['trophic_level'] = 3
-          break
-
-  # mark all carnivores
-  # - eat only primary consumers and herbivores
-  for nodeId in nodeInfo:
-    if nodeInfo[nodeId]['type'] != 1: # ignore non-living organisms
-      continue
-    if 'trophic_level' in nodeInfo[nodeId]: # ignore organisms that have already been asigned a trophic level
-      continue
-    isCarnivore = True
-    node = G.GetNI(nodeId)
-    for preyId in node.GetInEdges():
-      if 'trophic_level' in nodeInfo[preyId]:
-        preyLevel = nodeInfo[preyId]['trophic_level']
-        if preyLevel < 2:
-          isCarnivore = False
-          break
-    if isCarnivore:
-      nodeInfo[nodeId]['trophic_level'] = 4
-
-analyzeTrophicLevels(G, nodeInfo, edgeWeights)
-
-# pp.pprint(nodeInfo)
-
-#pp.pprint(nodeInfo)
-#pp.pprint(calculatePercentBiomass(nodeInfo))
+if __name__ == "__main__":
+  main()
