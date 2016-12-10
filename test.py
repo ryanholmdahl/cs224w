@@ -8,5 +8,5 @@ edges = {(0, 3): 1000, (3, 4): 600, (3, 1): 200, (3, 2): 200, (4, 6): 300, (4, 1
 sources = [0]
 sinks = [1]
 piles = [2]
-algo = TurnAlgorithm(masses, edges, sources, sinks, piles, 10)
+algo = TurnAlgorithm(masses, edges, sources, sinks, piles, 0.1)
 print get_change_impact(algo, 3, 000)

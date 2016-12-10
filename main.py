@@ -86,9 +86,9 @@ def initialize_turn_algorithm(node_info, edge_weights, min_biomass):
   algo = TurnAlgorithm(masses, edge_weights, sources, sinks, piles, min_biomass)
   return algo
 
-def get_change_impact(algo, event_node, new_mass):
+def get_change_impact(algo, event_node, new_mass, num_iters=10000, verbose=False):
   algo.reset()
-  mass_flow, average_masses = algo.turns(event_node, new_mass, iters=10000, verbose=True)
+  mass_flow, average_masses = algo.turns(event_node, new_mass, iters=num_iters, verbose=verbose)
   final_masses = {node:average_masses[node] if algo.biomass[node] > 0 else 0 for node in algo.nodelist if algo.default_biomass[node] > 0}
   extinctions = 0
   relative_sizes = {}
