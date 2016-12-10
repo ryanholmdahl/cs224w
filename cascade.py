@@ -349,13 +349,13 @@ class CascadeAlgorithm():
 
 
 class TurnAlgorithm():
-    def __init__(self, masses, edges, sources, sinks, piles, min_biomass):
+    def __init__(self, masses, edges, sources, sinks, piles, min_biomass_ratio):
         self.default_biomass = masses
         self.edges = edges
         self.sources = sources
         self.sinks = sinks
         self.piles = piles
-        self.min_biomass = min_biomass
+        self.min_biomass_ratio = min_biomass_ratio
         self.nodelist = []
         for node1, node2 in self.edges:
             if node1 not in self.nodelist:
@@ -434,7 +434,7 @@ class TurnAlgorithm():
                     mass_flow[(prey, node)] += intake
             self.biomass = new_biomass
             for node in self.biomass:
-                if self.biomass[node] < self.min_biomass and node not in self.sinks and node not in self.sources:
+                if self.biomass[node] < self.min_biomass_ratio * self.default_biomass[node] and node not in self.sinks and node not in self.sources:
                     self.biomass[node] = 0
                 average_masses[node] += self.biomass[node] * 1.0 / iters
             if verbose:
