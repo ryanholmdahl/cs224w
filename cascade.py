@@ -406,7 +406,7 @@ class TurnAlgorithm():
         self.biomass[event_node] = new_mass
         mass_flow = {edge: 0 for edge in self.edges}
         average_masses = {node: 0 for node in self.nodelist}
-        for iter in range(iters):
+        for _ in xrange(iters):
             for node in self.sources:
                 self.biomass[node]+=1.0
             new_biomass = copy.deepcopy(self.biomass)
