@@ -376,7 +376,7 @@ class TurnAlgorithm():
         self.eat_rates = {}
         for edge in self.edges:
             if edge[1] in self.sinks or edge[1] in self.piles:
-                self.eat_rates[edge] = self.edge_per_input[edge]/self.biomass[edge[0]]
+                self.eat_rates[edge] = self.edge_per_input[edge]/(self.biomass[edge[0]] if self.biomass[edge[0]]>0 else 1)
             elif edge[0] in self.sources:
                 self.eat_rates[edge] = self.edge_per_input[edge]/self.biomass[edge[1]]
             else:
