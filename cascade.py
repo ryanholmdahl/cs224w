@@ -351,6 +351,8 @@ class CascadeAlgorithm():
 class TurnAlgorithm():
     def __init__(self, masses, edges, sources, sinks, piles, min_biomass_ratio):
         self.default_biomass = masses
+        for node in self.default_biomass:
+            self.default_biomass[node] = max(self.default_biomass[node],1e-10)
         self.edges = edges
         self.sources = sources
         self.sinks = sinks
@@ -362,6 +364,9 @@ class TurnAlgorithm():
                 self.nodelist.append(node1)
             if node2 not in self.nodelist:
                 self.nodelist.append(node2)
+        self.pile_lookup = {node:(True if node in self.piles else False) for node in self.nodelist}
+        self.sink_lookup = {node:(True if node in self.sinks else False) for node in self.nodelist}
+        self.source_lookup = {node:(True if node in self.sources else False) for node in self.nodelist}
         self.edges = {edge: self.edges[edge] for edge in self.edges}
         self.biomass = copy.deepcopy(masses)
         sink_edges = {edge: self.edges[edge] for edge in self.edges if edge[1] in self.sinks}
@@ -382,57 +387,30 @@ class TurnAlgorithm():
             else:
                 self.eat_rates[edge] = self.edge_per_input[edge]/self.biomass[edge[1]]/self.biomass[edge[0]]
 
-
-    def turn_eat_rates(self,verbose=False):
-        for edge in self.edges:
-            self.eat_rates[edge] = 0
-        while True:
-            old_biomass = copy.deepcopy(self.biomass)
-            mass_flow, average_masses = self.turns(0, self.biomass[0], iters=self.train_iters)
-            max_diff = 0
-            for edge in self.eat_rates:
-                delta = (self.edge_per_input[edge] - mass_flow[edge] * 1.0 / self.train_iters)
-                max_diff = max(delta,max_diff)
-                self.eat_rates[edge] += self.learn_rate * delta
-                self.eat_rates[edge] = max(0, self.eat_rates[edge])
-            if max_diff < self.learn_thresh:
-                self.biomass = old_biomass
-                break
-            if verbose:
-                print self.biomass, mass_flow
-            self.biomass = old_biomass
-
     def turns(self, event_node, new_mass, iters=1000, verbose=False):
         self.biomass[event_node] = new_mass
         mass_flow = {edge: 0 for edge in self.edges}
         average_masses = {node: 0 for node in self.nodelist}
+        new_biomass = copy.deepcopy(self.biomass)
         for _ in xrange(iters):
-            for node in self.sources:
-                self.biomass[node]+=1.0
-            new_biomass = copy.deepcopy(self.biomass)
-            for node in self.nodelist:
-                if node in self.sources:
-                    continue
-                if node in self.sinks or node in self.piles:
-                    for prey in self.get_prey(node):
-                        intake = min(self.biomass[prey], self.eat_rates[(prey, node)] * self.biomass[prey])
-                        new_biomass[prey] -= intake
-                        if new_biomass[prey] < 0:
-                            new_biomass[prey] = 0
-                        new_biomass[node] += intake
-                        mass_flow[(prey, node)] += intake
-                    continue
-                for prey in self.get_prey(node):
-                    if prey in self.sources:
-                        intake = min(self.biomass[prey], self.eat_rates[(prey, node)] * self.biomass[node])
-                    else:
-                        intake = min(self.biomass[prey], self.biomass[prey] * self.eat_rates[(prey, node)] * self.biomass[node])
+            for edge in self.edges:
+                prey,predator = edge
+                if self.sink_lookup[predator] or self.pile_lookup[predator]:
+                    intake = min(self.biomass[prey], self.eat_rates[(prey, predator)] * self.biomass[prey])
                     new_biomass[prey] -= intake
-                    if new_biomass[prey] < 0:
-                        new_biomass[prey] = 0
-                    new_biomass[node] += intake
-                    mass_flow[(prey, node)] += intake
-            self.biomass = new_biomass
+                    new_biomass[predator] += intake
+                    mass_flow[(prey, predator)] += intake
+                else:
+                    if prey in self.sources:
+                        intake = self.eat_rates[(prey, predator)] * self.biomass[predator]
+                    else:
+                        intake = min(self.biomass[prey], self.biomass[prey] * self.eat_rates[(prey, predator)] * self.biomass[predator])
+                        new_biomass[prey] -= intake
+                    new_biomass[predator] += intake
+                    mass_flow[(prey, predator)] += intake
+            for node in self.nodelist:
+                new_biomass[node] = max(new_biomass[node],0)
+                self.biomass[node] = new_biomass[node]
             for node in self.biomass:
                 if self.biomass[node] < self.min_biomass_ratio * self.default_biomass[node] and node not in self.sinks and node not in self.sources:
                     self.biomass[node] = 0
