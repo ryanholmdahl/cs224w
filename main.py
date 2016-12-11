@@ -54,6 +54,7 @@ def calculate_centrality(G, node_info, edge_weights):
     'between_centr_undir': [],
     'page_rank': [],
     'multi_page_rank': [],
+    'multi_page_rank_rev': [],
     'throughflow': [],
     'biomass': []
   }
