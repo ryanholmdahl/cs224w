@@ -11,6 +11,7 @@ pp = pprint.PrettyPrinter(indent=2)
 
 ### Parameters ###
 input_file_paths = ["Webs_paj/Narragan.paj","Webs_paj/StMarks.paj",'Webs_paj/Chesapeake.paj',"Webs_paj/Mondego.paj",'Webs_paj/Michigan.paj']
+input_file_paths = ["Webs_paj/ChesLower.paj","Webs_paj/ChesMiddle.paj","Webs_paj/ChesUpper.paj","Webs_paj/CrystalC.paj","Webs_paj/CrystalD.paj","Webs_paj/Narragan.paj","Webs_paj/StMarks.paj",'Webs_paj/Chesapeake.paj',"Webs_paj/Mondego.paj",'Webs_paj/Michigan.paj']
 min_biomass = 0
 destruction_type = 'random'
 destruction_mass = 0
@@ -155,35 +156,72 @@ def get_change_impact(algo, event_node, new_mass, num_iters=100000, verbose=Fals
   #   pp.pprint(relative_sizes)
   return impact_score / len(final_masses)
 
+def get_unignored_results(results, indep_vars, y, ignore_nodes):
+  x_unignored = {}
+  y_unignored = {}
+  for input_file_path in results:
+    data = results[input_file_path]
+    usey = []
+    usex = {x:[] for x in indep_vars}
+    for i in range(len(results[input_file_path]["node_ids"])):
+      node_id = results[input_file_path]["node_ids"][i]
+      if ignore_nodes is None or input_file_path not in ignore_nodes or node_id not in ignore_nodes[input_file_path]:
+        for x in indep_vars:
+          usex[x].append(data[x][i])
+        usey.append(data[y][i])
+    x_unignored[input_file_path] = usex
+    y_unignored[input_file_path] = usey
+  return x_unignored, y_unignored
 
-def get_correlations(results):
+
+def plot_correlations(measures,measure_labels):
+  plt.figure("measures")
+  plt.grid(True)
+  plt.xlabel("Coefficient of Variation")
+  plt.ylabel('Mean R-Squared')
+  lines = []
+  colors = plt.cm.rainbow(np.linspace(0,1,len(measures)))
+  for m,color in zip(measures.keys(),colors):
+    line, = plt.plot([math.sqrt(measures[m]["variance"])/measures[m]["mean"]],[measures[m]["mean"]],'o',label=measure_labels[m],ms=10,c=color)
+    lines.append(line)
+  lgd = plt.legend(bbox_to_anchor=(1.05, 1),loc=2,handler_map={line: HandlerLine2D(numpoints=1) for line in lines})
+  # cv_list = [math.sqrt(measures[m]["variance"])/measures[m]["mean"] for m in measures]
+  # mean_list = [measures[m]["mean"] for m in measures]
+  # label_list = [measure_labels[m] for m in measures]
+  # plt.scatter(cv_list,mean_list,c='green',s=100)
+  # for label,x,y in zip(label_list,cv_list,mean_list):
+  #   plt.annotate(label,xy = (x,y),xytext=(20,20),textcoords = 'offset points', ha = 'right', va = 'bottom', bbox = dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
+  #                arrowprops=dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
+  plt.savefig("graphs/correlations.png", transparent=True, bbox_extra_artists=(lgd,), bbox_inches='tight')
+
+def get_correlations(results, ignore_nodes=None):
   indep_vars = ['degree', 'close_centr', 'between_centr', 'page_rank', 'multi_page_rank', 'multi_page_rank_rev', 'throughflow', 'biomass', 'in_degree', 'out_degree', 'close_centr_undir', 'between_centr_undir']
   y = 'impact_scores'
   corrcoefs = {var:[] for var in indep_vars}
-  for input_file_path in input_file_paths:
-    data = results[input_file_path]
+  x_unignored, y_unignored = get_unignored_results(results, indep_vars, y, ignore_nodes)
+  for input_file_path in results:
     for x in indep_vars:
-      xobs = np.array(data[x])
-      yobs = np.array(data[y])
-      corrcoefs[x].append(np.corrcoef(xobs,yobs)[1,0])
+      xobs = np.array(x_unignored[input_file_path][x])
+      yobs = np.array(y_unignored[input_file_path])
+      corrcoefs[x].append((np.corrcoef(xobs,yobs)[1,0])**2)
   corr_measures = {x:{"mean":sum(corrcoefs[x])/len(corrcoefs[x])} for x in corrcoefs}
   for x in corr_measures:
     corr_measures[x]["variance"] = sum((val-corr_measures[x]["mean"])**2 for val in corrcoefs[x])/(len(corrcoefs[x])-1)
-  return corr_measures
+  return corrcoefs,corr_measures
 
 
-def create_plots(results,logx=False):
+def create_plots(results,logx=False, ignore_nodes=None):
   indep_vars = ['degree', 'close_centr', 'between_centr', 'page_rank', 'multi_page_rank', 'multi_page_rank_rev', 'throughflow', 'biomass', 'in_degree', 'out_degree', 'close_centr_undir', 'between_centr_undir']
   y = 'impact_scores'
 
+  x_unignored, y_unignored = get_unignored_results(results, indep_vars, y, ignore_nodes)
   for input_file_path in input_file_paths:
-    data = results[input_file_path]
     for x in indep_vars:
       plt.figure(x)
       if logx:
-        plt.semilogx(data[x], data[y], 'o')
+        plt.semilogx(x_unignored[input_file_path][x], y_unignored[input_file_path], 'o')
       else:
-        plt.plot(data[x], data[y], 'o')
+        plt.plot(x_unignored[input_file_path][x], y_unignored[input_file_path], 'o')
 
   for x in indep_vars:
     plt.figure(x)
