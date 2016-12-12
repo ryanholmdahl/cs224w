@@ -185,11 +185,6 @@ def create_plots(results,logx=False):
       else:
         plt.plot(data[x], data[y], 'o')
 
-  corr_measures = {x:{"mean":sum(corrcoefs[x])/len(corrcoefs[x])} for x in corrcoefs}
-  for x in corr_measures:
-    corr_measures[x]["variance"] = sum((val-corr_measures[x]["mean"])**2 for val in corrcoefs[x])/(len(corrcoefs[x])-1)
-  print corr_measures
-
   for x in indep_vars:
     plt.figure(x)
     plt.grid(True)
