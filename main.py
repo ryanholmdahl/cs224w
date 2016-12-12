@@ -13,8 +13,8 @@ pp = pprint.PrettyPrinter(indent=2)
 input_file_paths = ["Webs_paj/Narragan.paj","Webs_paj/StMarks.paj",'Webs_paj/Chesapeake.paj',"Webs_paj/Mondego.paj",'Webs_paj/Michigan.paj']
 input_file_paths = ["Webs_paj/ChesLower.paj","Webs_paj/ChesMiddle.paj","Webs_paj/ChesUpper.paj","Webs_paj/CrystalC.paj","Webs_paj/CrystalD.paj","Webs_paj/Narragan.paj","Webs_paj/StMarks.paj",'Webs_paj/Chesapeake.paj',"Webs_paj/Mondego.paj",'Webs_paj/Michigan.paj']
 min_biomass = 0
-destruction_type = 'random'
 destruction_mass = 0
+num_iters = 100000
 
 def main():
   # results = {
@@ -35,9 +35,9 @@ def main():
     impact_scores = []
     for node_id in results[input_file_path]['node_ids']:
       node = node_info[node_id]
-      impact_scores.append(get_change_impact(algo, node_id, destruction_mass))
-      # if node_id % 1 == 0:
-      print '\t\tFinished running model for node %d' % node_id
+      score = get_change_impact(algo, node_id, destruction_mass, num_iters=num_iters)
+      impact_scores.append(score)
+      print '\t\tFinished running model for node %d, impact score: %g' % (node_id, score)
     results[input_file_path]['impact_scores'] = impact_scores
     cPickle.dump(results[input_file_path],open("pkls/"+input_file_path.split('/')[1]+".pkl","wb"))
   create_plots(results)
@@ -123,7 +123,7 @@ def setup_graph(input_file_path):
   return G, node_info, edge_weights
 
 def initialize_turn_algorithm(node_info, edge_weights, min_biomass):
-  masses = {}
+  masses = np.zeros(max(node_id for node_id in node_info)+1)
   sources = []
   sinks = []
   piles = []
@@ -151,10 +151,7 @@ def get_change_impact(algo, event_node, new_mass, num_iters=100000, verbose=Fals
       extinctions += 1
     relative_sizes[node_id] = final_masses[node_id]/float(algo.default_biomass[node_id])
   impact_score = sum([math.pow(min(relative_sizes[node_id]-1,0),2) for node_id in relative_sizes])
-  print impact_score/len(final_masses)
-  # if impact_score > 10:
-  #   pp.pprint(relative_sizes)
-  return impact_score / len(final_masses)
+  return impact_score / float(len(final_masses))
 
 def get_unignored_results(results, indep_vars, y, ignore_nodes):
   x_unignored = {}
