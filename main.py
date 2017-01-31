@@ -225,6 +225,7 @@ def create_plots(results,logx=False, ignore_nodes=None):
     plt.grid(True)
     plt.xlabel(x)
     plt.ylabel('Impact Score')
+    plt.legend(input_file_paths,loc='best')
 
     plt.savefig('graphs\\%s.png' % x, format="png", transparent=True)
     plt.cla()
