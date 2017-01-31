@@ -3,6 +3,7 @@ from cascade import TurnAlgorithm
 import snap
 import math
 import matplotlib.pyplot as plt
+from matplotlib.legend_handler import HandlerLine2D
 import cPickle
 import numpy as np
 
@@ -10,7 +11,6 @@ import pprint
 pp = pprint.PrettyPrinter(indent=2)
 
 ### Parameters ###
-input_file_paths = ["Webs_paj/Narragan.paj","Webs_paj/StMarks.paj",'Webs_paj/Chesapeake.paj',"Webs_paj/Mondego.paj",'Webs_paj/Michigan.paj']
 input_file_paths = ["Webs_paj/ChesLower.paj","Webs_paj/ChesMiddle.paj","Webs_paj/ChesUpper.paj","Webs_paj/CrystalC.paj","Webs_paj/CrystalD.paj","Webs_paj/Narragan.paj","Webs_paj/StMarks.paj",'Webs_paj/Chesapeake.paj',"Webs_paj/Mondego.paj",'Webs_paj/Michigan.paj']
 min_biomass = 0
 destruction_mass = 0
@@ -225,7 +225,6 @@ def create_plots(results,logx=False, ignore_nodes=None):
     plt.grid(True)
     plt.xlabel(x)
     plt.ylabel('Impact Score')
-    plt.legend(input_file_paths)
 
     plt.savefig('graphs\\%s.png' % x, format="png", transparent=True)
     plt.cla()
