@@ -11,10 +11,27 @@ import pprint
 pp = pprint.PrettyPrinter(indent=2)
 
 ### Parameters ###
-input_file_paths = ["Webs_paj/ChesLower.paj","Webs_paj/ChesMiddle.paj","Webs_paj/ChesUpper.paj","Webs_paj/CrystalC.paj","Webs_paj/CrystalD.paj","Webs_paj/Narragan.paj","Webs_paj/StMarks.paj",'Webs_paj/Chesapeake.paj',"Webs_paj/Mondego.paj",'Webs_paj/Michigan.paj']
+input_file_dir = 'Webs_paj/'
+input_files = ['Chesapeake.paj', 'ChesLower.paj','ChesMiddle.paj','ChesUpper.paj','CrystalC.paj','CrystalD.paj','Narragan.paj','StMarks.paj','Mondego.paj','Michigan.paj']
+
 min_biomass = 0
 destruction_mass = 0
 num_iters = 100000
+
+centrality_measures = [
+  'degree',
+  'in_degree',
+  'out_degree',
+  'close_centr',
+  'close_centr_undir',
+  'between_centr',
+  'between_centr_undir'
+  'page_rank',
+  'multi_page_rank',
+  'multi_page_rank_rev',
+  'throughflow',
+  'biomass'
+]
 
 def main():
   # results = {
@@ -27,39 +44,33 @@ def main():
   # }
   results = {}
 
-  for input_file_path in input_file_paths:
-    G, node_info, edge_weights = setup_graph(input_file_path)
-    results[input_file_path] = calculate_centrality(G, node_info, edge_weights)
+  for input_file in input_files:
+    G, node_info, edge_weights = setup_graph(input_file_dir + input_file)
+    results[input_file] = calculate_centrality(G, node_info, edge_weights)
     print '\tRunning model'
     algo = initialize_turn_algorithm(node_info, edge_weights, min_biomass)
     impact_scores = []
-    for node_id in results[input_file_path]['node_ids']:
+    for node_id in results[input_file]['node_ids']:
       node = node_info[node_id]
       score = get_change_impact(algo, node_id, destruction_mass, num_iters=num_iters)
       impact_scores.append(score)
       print '\t\tFinished running model for node %d, impact score: %g' % (node_id, score)
-    results[input_file_path]['impact_scores'] = impact_scores
-    cPickle.dump(results[input_file_path],open("pkls/"+input_file_path.split('/')[1]+".pkl","wb"))
+    results[input_file]['impact_scores'] = impact_scores
+    cPickle.dump(results[input_file], open("pkls/"+input_file+".pkl","wb"))
   create_plots(results)
 
 def calculate_centrality(G, node_info, edge_weights):
   print '\tCalculating centrality measures for every node in graph'
-  data = {
-    'node_ids': [],
-    'degree': [],
-    'in_degree': [],
-    'out_degree': [],
-    'close_centr': [],
-    'close_centr_undir': [],
-    'between_centr': [],
-    'between_centr_undir': [],
-    'page_rank': [],
-    'multi_page_rank': [],
-    'multi_page_rank_rev': [],
-    'throughflow': [],
-    'biomass': []
-  }
-
+  
+  # initialize data dictionary
+  # data = { 'node_ids': [],
+  #          'degree': [],
+  #          'in_degree': [],
+  #          etc...
+  # }
+  data = { var: [] for var in centrality_measures }
+  data['node_ids'] = []
+  
   # (exact) betweenness centrality for every node and edge
   node_between_cent_undir = snap.TIntFltH() # {node_id => betweenness centrality}
   edge_between_cent_undir = snap.TIntPrFltH() # {(n1,n2) => betweenness centrality}
@@ -73,7 +84,7 @@ def calculate_centrality(G, node_info, edge_weights):
   page_rank = snap.TIntFltH() # {node_id => PageRank score}
   snap.GetPageRank(G, page_rank)
 
-  #Multigraph PageRank score of every node
+  # Multigraph PageRank score of every node
   total_input = sum(edge_weights[edge] for edge in edge_weights if node_info[edge[0]]["type"]==3)
   multigraph = snap.GenRndGnm(snap.PNEANet, 100, 1000)
   multigraph.Clr()
@@ -156,18 +167,18 @@ def get_change_impact(algo, event_node, new_mass, num_iters=100000, verbose=Fals
 def get_unignored_results(results, indep_vars, y, ignore_nodes):
   x_unignored = {}
   y_unignored = {}
-  for input_file_path in results:
-    data = results[input_file_path]
+  for input_file in results:
+    data = results[input_file]
     usey = []
     usex = {x:[] for x in indep_vars}
-    for i in range(len(results[input_file_path]["node_ids"])):
-      node_id = results[input_file_path]["node_ids"][i]
-      if ignore_nodes is None or input_file_path not in ignore_nodes or node_id not in ignore_nodes[input_file_path]:
+    for i in range(len(results[input_file]["node_ids"])):
+      node_id = results[input_file]["node_ids"][i]
+      if ignore_nodes is None or input_file not in ignore_nodes or node_id not in ignore_nodes[input_file]:
         for x in indep_vars:
           usex[x].append(data[x][i])
         usey.append(data[y][i])
-    x_unignored[input_file_path] = usex
-    y_unignored[input_file_path] = usey
+    x_unignored[input_file] = usex
+    y_unignored[input_file] = usey
   return x_unignored, y_unignored
 
 
@@ -192,14 +203,13 @@ def plot_correlations(measures,measure_labels):
   plt.savefig("graphs/correlations.png", transparent=True, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
 def get_correlations(results, ignore_nodes=None):
-  indep_vars = ['degree', 'close_centr', 'between_centr', 'page_rank', 'multi_page_rank', 'multi_page_rank_rev', 'throughflow', 'biomass', 'in_degree', 'out_degree', 'close_centr_undir', 'between_centr_undir']
   y = 'impact_scores'
-  corrcoefs = {var:[] for var in indep_vars}
-  x_unignored, y_unignored = get_unignored_results(results, indep_vars, y, ignore_nodes)
-  for input_file_path in results:
-    for x in indep_vars:
-      xobs = np.array(x_unignored[input_file_path][x])
-      yobs = np.array(y_unignored[input_file_path])
+  corrcoefs = {var:[] for var in centrality_measures}
+  x_unignored, y_unignored = get_unignored_results(results, centrality_measures, y, ignore_nodes)
+  for input_file in results:
+    for x in centrality_measures:
+      xobs = np.array(x_unignored[input_file][x])
+      yobs = np.array(y_unignored[input_file])
       corrcoefs[x].append((np.corrcoef(xobs,yobs)[1,0])**2)
   corr_measures = {x:{"mean":sum(corrcoefs[x])/len(corrcoefs[x])} for x in corrcoefs}
   for x in corr_measures:
@@ -207,25 +217,23 @@ def get_correlations(results, ignore_nodes=None):
   return corrcoefs,corr_measures
 
 
-def create_plots(results,logx=False, ignore_nodes=None):
-  indep_vars = ['degree', 'close_centr', 'between_centr', 'page_rank', 'multi_page_rank', 'multi_page_rank_rev', 'throughflow', 'biomass', 'in_degree', 'out_degree', 'close_centr_undir', 'between_centr_undir']
+def create_plots(results, logx=False, ignore_nodes=None):
   y = 'impact_scores'
-
-  x_unignored, y_unignored = get_unignored_results(results, indep_vars, y, ignore_nodes)
-  for input_file_path in input_file_paths:
-    for x in indep_vars:
+  x_unignored, y_unignored = get_unignored_results(results, centrality_measures, y, ignore_nodes)
+  for input_file in input_files:
+    for x in centrality_measures:
       plt.figure(x)
       if logx:
-        plt.semilogx(x_unignored[input_file_path][x], y_unignored[input_file_path], 'o')
+        plt.semilogx(x_unignored[input_file][x], y_unignored[input_file], 'o')
       else:
-        plt.plot(x_unignored[input_file_path][x], y_unignored[input_file_path], 'o')
+        plt.plot(x_unignored[input_file][x], y_unignored[input_file], 'o')
 
-  for x in indep_vars:
+  for x in centrality_measures:
     plt.figure(x)
     plt.grid(True)
     plt.xlabel(x)
     plt.ylabel('Impact Score')
-    plt.legend(input_file_paths,loc='best')
+    plt.legend(input_files, loc='best')
 
     plt.savefig('graphs\\%s.png' % x, format="png", transparent=True)
     plt.cla()
